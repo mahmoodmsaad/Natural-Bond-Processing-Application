@@ -5,29 +5,42 @@ def load_data(file_path):
     return pd.read_csv(file_path)
 
 def filter_data(data, ignore_values, top_n, ascending=True):
+    # Check if 'Orbital' column is present
+    if 'Orbital' not in data.columns:
+        st.error("The 'Orbital' column is missing in the DataFrame.")
+        return pd.DataFrame()  # Return an empty DataFrame to avoid further errors
+
     # Ignore rows containing specified values
     for value in ignore_values:
         data = data[data['Orbital'] != value]
 
-    # Display maximum kcal/mol
-    max_kcal = data['kcal/mol'].max()
-    st.subheader(f"Maximum kcal/mol: {max_kcal}")
+    # Check if 'kcal/mol' column is present
+    if 'kcal/mol' in data.columns:
+        # Display maximum kcal/mol
+        max_kcal = data['kcal/mol'].max()
+        st.subheader(f"Maximum kcal/mol: {max_kcal}")
+    else:
+        st.warning("The 'kcal/mol' column is missing in the DataFrame.")
 
     # Display information about specific orbitals
     orbital_info = {}
     for orbital in ['RY*', 'BD*', 'BD', 'LP', 'CR']:
-        orbital_count = data[data['Orbital'] == orbital].shape[0]
-        orbital_info[orbital] = {
-            'Count': orbital_count,
-            'Rows': data[data['Orbital'] == orbital].index.tolist()
-        }
+        if 'Orbital' in data.columns:  # Check again in case the column was removed
+            orbital_count = data[data['Orbital'] == orbital].shape[0]
+            orbital_info[orbital] = {
+                'Count': orbital_count,
+                'Rows': data[data['Orbital'] == orbital].index.tolist()
+            }
 
     st.subheader("Orbital Information:")
     st.write(orbital_info)
 
-    # Sort by kcal/mol and display top N
-    sorted_data = data.sort_values(by='kcal/mol', ascending=ascending)
-    return sorted_data.head(top_n)
+    # Sort by kcal/mol and display top N if 'kcal/mol' column is present
+    if 'kcal/mol' in data.columns:
+        sorted_data = data.sort_values(by='kcal/mol', ascending=ascending)
+        return sorted_data.head(top_n)
+    else:
+        return pd.DataFrame()
 
 def main():
     st.title("Orbital Energy Analyzer")
