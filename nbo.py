@@ -4,9 +4,29 @@ import pandas as pd
 def load_data(file_path):
     return pd.read_csv(file_path)
 
-def filter_data(data, orbital_types, top_n, ascending=True):
-    filtered_data = data[data['Orbital'].isin(orbital_types)]
-    sorted_data = filtered_data.sort_values(by='Delta E', ascending=ascending)
+def filter_data(data, ignore_values, top_n, ascending=True):
+    # Ignore rows containing specified values
+    for value in ignore_values:
+        data = data[data['Orbital'] != value]
+
+    # Display maximum kcal/mol
+    max_kcal = data['kcal/mol'].max()
+    st.subheader(f"Maximum kcal/mol: {max_kcal}")
+
+    # Display information about specific orbitals
+    orbital_info = {}
+    for orbital in ['RY*', 'BD*', 'BD', 'LP', 'CR']:
+        orbital_count = data[data['Orbital'] == orbital].shape[0]
+        orbital_info[orbital] = {
+            'Count': orbital_count,
+            'Rows': data[data['Orbital'] == orbital].index.tolist()
+        }
+
+    st.subheader("Orbital Information:")
+    st.write(orbital_info)
+
+    # Sort by kcal/mol and display top N
+    sorted_data = data.sort_values(by='kcal/mol', ascending=ascending)
     return sorted_data.head(top_n)
 
 def main():
@@ -22,14 +42,8 @@ def main():
         st.subheader("Raw Data:")
         st.write(data)
 
-        # Filter by orbital type
-        selected_orbital = st.selectbox("Select Orbital Type (Optional):", ['All'] + list(data['Orbital'].unique()))
-        if selected_orbital != 'All':
-            data = data[data['Orbital'] == selected_orbital]
-
-        # Display filtered data
-        st.subheader("Filtered Data:")
-        st.write(data)
+        # Ignore specified orbitals
+        ignore_values = st.multiselect("Ignore Orbitals:", ['RY*', 'CR', 'LP'])
 
         # Filter by top or bottom energies
         filter_type = st.radio("Select Filter Type:", ["Top", "Bottom"])
@@ -37,10 +51,10 @@ def main():
 
         if filter_type == "Top":
             st.subheader(f"Top {top_n} Orbitals:")
-            result = filter_data(data, data['Orbital'].unique(), top_n)
+            result = filter_data(data, ignore_values, top_n)
         else:
             st.subheader(f"Bottom {top_n} Orbitals:")
-            result = filter_data(data, data['Orbital'].unique(), top_n, ascending=False)
+            result = filter_data(data, ignore_values, top_n, ascending=False)
 
         st.write(result)
 
