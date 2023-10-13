@@ -12,6 +12,9 @@ def filter_data(data, ignore_values, selected_orbitals, top_n, ascending=True):
     # Filter by selected orbitals
     if selected_orbitals:
         data = data[data['Orbital'].isin(selected_orbitals)]
+    else:
+        # If no specific orbitals selected, choose rows containing "BD" in the 'Orbital' column
+        data = data[data['Orbital'].str.contains('BD', na=False)]
 
     # Display maximum kcal/mol
     max_kcal = data['kcal/mol'].max()
