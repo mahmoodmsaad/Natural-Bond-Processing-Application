@@ -1,73 +1,49 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
-def load_data(file_path):
-    return pd.read_csv(file_path)
+# Function to filter and process NBO data
+def process_nbo_data(file_path, ignore_orbitals, top_values):
+    # Load the CSV file into a DataFrame
+    df = pd.read_csv(file_path)
 
-def filter_data(data, ignore_values, selected_orbitals, top_n, ascending=True):
-    # Ignore rows containing specified values
-    for value in ignore_values:
-        data = data[data['Orbital'] != value]
+    # Create a boolean mask to identify rows containing specified orbitals
+    mask = df.apply(lambda row: any([orbital in str(cell) for cell in row for orbital in ignore_orbitals]), axis=1)
 
-    # Filter by selected orbitals
-    if selected_orbitals:
-        data = data[data['Orbital'].isin(selected_orbitals)]
+    # Invert the mask to keep rows without specified orbitals
+    df_filtered = df[~mask]
+
+    # Check if 'kcal/mol' column exists
+    if 'kcal/mol' in df_filtered.columns:
+        # Sort the DataFrame by 'kcal/mol' in descending order
+        df_sorted = df_filtered.sort_values(by='kcal/mol', ascending=False)
+        
+        # Take the top rows based on the specified number
+        top_rows = df_sorted.head(top_values)
+
+        # Save the top rows to a new CSV file
+        top_rows.to_csv('top_sorted_result.csv', index=False)
+        
+        st.success(f"Top {top_values} rows based on 'kcal/mol' saved to 'top_sorted_result.csv'")
+        return top_rows
     else:
-        # If no specific orbitals selected, choose rows containing "BD" in the 'Orbital' column
-        data = data[data['Orbital'].str.contains('BD', na=False)]
+        st.warning("Column 'kcal/mol' not found in the filtered DataFrame.")
+        return pd.DataFrame()
 
-    # Display maximum kcal/mol
-    max_kcal = data['kcal/mol'].max()
-    st.subheader(f"Maximum kcal/mol: {max_kcal}")
+# Streamlit web application
+st.title("NBO Data Processing")
 
-    # Display information about specific orbitals
-    orbital_info = {}
-    for orbital in selected_orbitals:
-        orbital_count = data[data['Orbital'] == orbital].shape[0]
-        orbital_info[orbital] = {
-            'Count': orbital_count,
-            'Rows': data[data['Orbital'] == orbital].index.tolist()
-        }
+# Option to upload CSV file
+uploaded_file = st.file_uploader("Upload NBO CSV File", type=["csv"])
 
-    st.subheader("Orbital Information:")
-    st.write(orbital_info)
+# Options for orbitals to ignore and number of top values
+ignore_orbitals = st.multiselect("Orbitals to Ignore", ['CR', 'LP', 'RY*'])
+top_values = st.slider("Select Number of Top Values", min_value=1, max_value=20, value=5)
 
-    # Sort by kcal/mol and display top N
-    sorted_data = data.sort_values(by='kcal/mol', ascending=ascending)
-    return sorted_data.head(top_n)
-
-def main():
-    st.title("Orbital Energy Analyzer")
-
-    # Upload CSV file
-    uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
-
+# Process the data when the user clicks the 'Process' button
+if st.button("Process"):
     if uploaded_file is not None:
-        data = load_data(uploaded_file)
-
-        # Display raw data
-        st.subheader("Raw Data:")
-        st.write(data)
-
-        # Ignore specified orbitals
-        ignore_values = st.multiselect("Ignore Orbitals:", ['RY*', 'CR', 'LP'])
-
-        # Select specific orbitals
-        all_orbitals = list(data['Orbital'].unique())
-        selected_orbitals = st.multiselect("Select Specific Orbitals (Optional):", all_orbitals)
-
-        # Filter by top or bottom energies
-        filter_type = st.radio("Select Filter Type:", ["Top", "Bottom"])
-        top_n = st.number_input("Number of Orbitals to Display:", min_value=1, max_value=len(data), value=10)
-
-        if filter_type == "Top":
-            st.subheader(f"Top {top_n} Orbitals:")
-            result = filter_data(data, ignore_values, selected_orbitals, top_n)
-        else:
-            st.subheader(f"Bottom {top_n} Orbitals:")
-            result = filter_data(data, ignore_values, selected_orbitals, top_n, ascending=False)
-
-        st.write(result)
-
-if __name__ == "__main__":
-    main()
+        # Process NBO data and display information
+        top_rows = process_nbo_data(uploaded_file, ignore_orbitals, top_values)
+        st.dataframe(top_rows)
+    else:
+        st.warning("Please upload a CSV file.")
