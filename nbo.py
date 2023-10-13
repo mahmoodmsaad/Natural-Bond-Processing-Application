@@ -5,6 +5,11 @@ def load_data(file_path):
     return pd.read_csv(file_path)
 
 def filter_data(data, ignore_values, top_n, filter_type):
+    # Check if 'Orbital' column is present
+    if 'Orbital' not in data.columns:
+        st.warning("The 'Orbital' column is missing in the DataFrame.")
+        return
+
     # Ignore rows containing specified values
     for value in ignore_values:
         data = data[~data['Orbital'].str.contains(value, na=False)]
