@@ -10,14 +10,16 @@ def filter_data(data, ignore_values, top_n, filter_type):
         data = data[~data['Orbital'].str.contains(value, na=False)]
 
     # Display top or bottom kcal/mol values
-    if filter_type == 'Top':
-        st.subheader(f"Top {top_n} Orbitals:")
-        result = data.nlargest(top_n, 'kcal/mol')
+    if 'kcal/mol' in data.columns:
+        if filter_type == 'Top':
+            st.subheader(f"Top {top_n} Orbitals:")
+            result = data.nlargest(top_n, 'kcal/mol')
+        else:
+            st.subheader(f"Bottom {top_n} Orbitals:")
+            result = data.nsmallest(top_n, 'kcal/mol')
+        st.write(result)
     else:
-        st.subheader(f"Bottom {top_n} Orbitals:")
-        result = data.nsmallest(top_n, 'kcal/mol')
-
-    st.write(result)
+        st.warning("The 'kcal/mol' column is missing in the DataFrame.")
 
 def main():
     st.title("Orbital Energy Analyzer")
@@ -33,7 +35,7 @@ def main():
         st.write(data)
 
         # Ignore specified orbitals
-        ignore_values = st.multiselect("Ignore Orbitals:", ['RY*', 'BD', 'CR', 'LP'])
+        ignore_values = st.multiselect("Ignore Orbitals:", ['RY*', 'CR*', 'LP*'])
 
         # Filter by top or bottom energies
         filter_type = st.radio("Select Filter Type:", ["Top", "Bottom"])
